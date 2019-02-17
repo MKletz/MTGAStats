@@ -185,12 +185,15 @@ class Deck
 
 class Game
 {
-    [Card[]]$Library
-    [Card[]]$Hand
-    [Card[]]$BattleField
+    [System.Collections.ArrayList]$Library = @()
+    [System.Collections.ArrayList]$Hand = @()
+    [System.Collections.ArrayList]$BattleField = @()
     [Boolean]$LandPlayed = $false
     [Deck]$Deck
     [int]$StartingHandSize = 7
+    [int]$Turn = 1
+    [Boolean]$OnPlay = $True
+
     # Constructor
     Game([Deck]$Deck)
     {
@@ -218,6 +221,7 @@ class Game
                 $this.Library.RemoveAt($LibraryIndex)
                 $Found = $true
             }
+            $LibraryIndex++
         }
     }
 
@@ -234,5 +238,45 @@ class Game
         $this.StartingHandSize = ($this.Hand.Count - 1)
         $this.Library = $this.Deck
         $this.Hand = @()
+    }
+
+    PlayCard([Card]$Card)
+    {
+        If($Card.type_line -like "*Land*")
+        {
+            $this.LandPlayed = $true
+        }
+
+        If($Card.type_line -notlike "*Instant*" -and $Card.type_line -notlike "*sorcery*")
+        {
+            #This is hideous and there has to be a better way...
+            [Boolean]$Found = $False
+            [int]$HandIndex = 0
+            While($Found -eq $False)
+            {
+                If($This.Hand[$HandIndex].Name -eq $Card.Name)
+                {
+                    $this.BattleField += $This.Hand[$HandIndex]
+                    $this.Hand.RemoveAt($HandIndex)
+                    $Found = $true
+                }
+                $HandIndex++
+            }
+        }
+    }
+
+    EndTurn()
+    {
+        $this.Turn++
+    }
+
+    StartTurn()
+    {
+        If( !($this.turn -eq 1 -and $this.OnPlay) )
+        {
+            $this.DrawCard()
+        }
+
+        $this.LandPlayed = $false
     }
 }

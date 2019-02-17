@@ -188,6 +188,7 @@ class Game
     [System.Collections.ArrayList]$Library = @()
     [System.Collections.ArrayList]$Hand = @()
     [System.Collections.ArrayList]$BattleField = @()
+    [System.Collections.ArrayList]$EffectZone = @()
     [Boolean]$LandPlayed = $false
     [Deck]$Deck
     [int]$StartingHandSize = 7
@@ -199,13 +200,13 @@ class Game
     {
         $this.Library = $Deck.MainDeck
         $this.Deck = $Deck
+        $this.ShuffleLibrary()
     }
 
     DrawCard()
     {
-        [int]$LibraryIndex = Get-Random -Minimum 0 -Maximum ($this.Library.Count -1)
-        $this.Hand += $this.Library[$LibraryIndex]
-        $this.Library.RemoveAt($LibraryIndex)
+        $this.Hand += $this.Library[0]
+        $this.Library.RemoveAt(0)
     }
 
     Tutor([String]$Name)
@@ -237,7 +238,7 @@ class Game
     {
         $this.StartingHandSize = ($this.Hand.Count - 1)
         $this.Library = $this.Deck
-        $this.Hand = @()
+        $this.Hand.Clear()
     }
 
     PlayCard([Card]$Card)
@@ -278,5 +279,41 @@ class Game
         }
 
         $this.LandPlayed = $false
+    }
+
+    ShuffleLibrary()
+    {
+        $this.Library = ( $this.Library | Sort-Object -Property { Get-Random } )
+    }
+
+    TopCardsToEffectZone([int]$CardCount)
+    {
+        0..($CardCount - 1) | ForEach-Object -Process {
+            $this.EffectZone += $this.Library[$_]
+            $this.Library.RemoveAt($_)
+        }
+    }
+
+    DrawFromEffectZone([Card]$Card)
+    {
+        #This is hideous and there has to be a better way...
+        [Boolean]$Found = $False
+        [int]$EffectZoneIndex = 0
+        While($Found -eq $False)
+        {
+            If($This.EffectZone[$EffectZoneIndex].Name -eq $Card.Name)
+            {
+                $this.Hand += $This.EffectZone[$EffectZoneIndex]
+                $This.EffectZone.RemoveAt($EffectZoneIndex)
+                $Found = $true
+            }
+            $EffectZoneIndex++
+        }
+    }
+
+    EmptyEffectZoneToBottom()
+    {
+        $this.Library += ( $this.EffectZone | Sort-Object -Property { Get-Random } )
+        $this.EffectZone.Clear()
     }
 }

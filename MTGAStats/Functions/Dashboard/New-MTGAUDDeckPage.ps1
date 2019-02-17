@@ -14,7 +14,7 @@ function New-MTGAUDDeckPage
     process
     {        
         [UniversalDashboard.Models.Basics.Element[]]$UDRows = @()
-        Get-ChildItem -Path $Script:DashboardScriptsPath -Recurse | ForEach-Object -Process {
+        Get-ChildItem -Path $Script:DashboardScriptsPath -Recurse -Filter "*.Element.ps1"| ForEach-Object -Process {
             Write-Verbose -Message "Importing dashboard row $($_.FullName)."
             $UDRows += & $_.FullName -Deck $Deck
         }

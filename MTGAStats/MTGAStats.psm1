@@ -182,3 +182,57 @@ class Deck
         }
    }
 }
+
+class Game
+{
+    [Card[]]$Library
+    [Card[]]$Hand
+    [Card[]]$BattleField
+    [Boolean]$LandPlayed = $false
+    [Deck]$Deck
+    [int]$StartingHandSize = 7
+    # Constructor
+    Game([Deck]$Deck)
+    {
+        $this.Library = $Deck.MainDeck
+        $this.Deck = $Deck
+    }
+
+    DrawCard()
+    {
+        [int]$LibraryIndex = Get-Random -Minimum 0 -Maximum ($this.Library.Count -1)
+        $this.Hand += $this.Library[$LibraryIndex]
+        $this.Library.RemoveAt($LibraryIndex)
+    }
+
+    Tutor([String]$Name)
+    {
+        #This is hideous and there has to be a better way...
+        [Boolean]$Found = $False
+        [int]$LibraryIndex = 0
+        While($Found -eq $False)
+        {
+            If($This.Library[$LibraryIndex].Name -eq $Name)
+            {
+                $this.Hand += $This.Library[$LibraryIndex]
+                $this.Library.RemoveAt($LibraryIndex)
+                $Found = $true
+            }
+        }
+    }
+
+    DrawOpeningHand()
+    {
+        While($this.Hand.Count -lt $this.StartingHandSize)
+        {
+            $this.DrawCard()
+        }
+    }
+
+    Mulligan()
+    {
+        $this.StartingHandSize = ($this.Hand.Count - 1)
+        $this.Library = $this.Deck
+        $this.Hand = @()
+    }
+}

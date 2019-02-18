@@ -5,6 +5,7 @@ param
     [Deck]$Deck
 )
 
+
 $MainDeckData = $Deck.MainDeck | Group-Object -Property Name -NoElement
 $SideBoardData = $Deck.Sideboard | Group-Object -Property Name -NoElement
 
@@ -15,17 +16,13 @@ $ProductionData = $Deck.GetManaProduction() | Group-Object
 $RequirementsData = $Deck.GetManaColorRequirements() | Group-Object
 
 New-UDRow {
-    New-UDColumn -Content {
-        New-UDTable -Title "MainDeck" -Headers @("Name", "Count") -FontColor "black" -Endpoint {
-            $MainDeckData | Out-UDTableData -Property @("Name", "Count")
-        }
-    }
+    New-UDGrid -Title "MainDeck"  -Headers @("Name", "Count") -Properties @("Name", "Count") -FontColor "black" -Endpoint {
+        $MainDeckData | Out-UDGridData
+    }  
 
-    New-UDColumn -Content {
-        New-UDTable -Title "Sideboard" -Headers @("Name", "Count") -FontColor "black" -Endpoint {
-            $SideBoardData | Out-UDTableData -Property @("Name", "Count")
-        }
-    }
+    New-UDGrid -Title "Sideboard"  -Headers @("Name", "Count") -Properties @("Name", "Count") -FontColor "black" -Endpoint {
+        $SideBoardData | Out-UDGridData
+    } 
 
     New-UDColumn -Content {
         New-UDChart -Type Pie -Labels $ProductionLabel -Title "Mana Production" -Endpoint {

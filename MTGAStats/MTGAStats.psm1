@@ -74,6 +74,10 @@ class Card
     [Boolean]$story_spotlight
     [Int32]$edhrec_rank
 
+    [string]$SuperType
+    [String]$SubType
+    [Boolean]$Legendary = $False
+
     [String[]]GetManaProduction()
     {
         If($this.type_line -like "*Land*" -and $this.color_identity)
@@ -92,6 +96,7 @@ class Card
    # Constructors
    Card ([Object]$ScryfallCardData)
    {
+    #Direct from Scryfall
     $this.id = $ScryfallCardData.id
     $this.oracle_id = $ScryfallCardData.oracle_id
     $this.mtgo_id = $ScryfallCardData.mtgo_id
@@ -106,7 +111,7 @@ class Card
     $this.highres_image = $ScryfallCardData.highres_image
     $this.mana_cost = $ScryfallCardData.mana_cost
     $this.cmc = $ScryfallCardData.cmc
-    $this.type_line = $ScryfallCardData.type_line
+    $this.type_line = $ScryfallCardData.type_line.Replace('â','-')
     $this.oracle_text = $ScryfallCardData.oracle_text
     $this.power = $ScryfallCardData.power
     $this.toughness = $ScryfallCardData.toughness
@@ -137,6 +142,17 @@ class Card
     $this.full_art = $ScryfallCardData.full_art
     $this.story_spotlight = $ScryfallCardData.story_spotlight
     $this.edhrec_rank = $ScryfallCardData.edhrec_rank
+
+    #Calculated properties
+    $this.SuperType = ($this.type_line -split "-")[0].Trim()
+    If( $this.type_line.Contains("-") )
+    {
+        $this.SubType = ($this.type_line -split "-")[1].Trim()
+    }
+    If($this.SuperType -like "Legendary *")
+    {
+        $this.Legendary = $True
+    }
    }
 }
 
@@ -189,6 +205,7 @@ class Game
     [System.Collections.ArrayList]$Hand = @()
     [System.Collections.ArrayList]$BattleField = @()
     [System.Collections.ArrayList]$EffectZone = @()
+    [System.Collections.ArrayList]$Graveyard = @()
     [Boolean]$LandPlayed = $false
     [Deck]$Deck
     [int]$StartingHandSize = 7
@@ -203,27 +220,44 @@ class Game
         $this.ShuffleLibrary()
     }
 
-    DrawCard()
+    [int]SearchZoneForCard([String]$Zone, [String]$CardProperty, [Object]$CardValue)
     {
-        $this.Hand += $this.Library[0]
-        $this.Library.RemoveAt(0)
+        [int]$FoundAt = -1
+        for ($Index = 0; $Index -lt $this.$Zone.count; $Index++)
+        {
+            If($this.$Zone[$Index].$CardProperty -like $CardValue)
+            {
+                $FoundAt = $Index
+                Break
+            } 
+        }
+
+        Return $FoundAt
     }
 
-    Tutor([String]$Name)
+    ChangeCardZoneByName([String]$CardName, [String]$From, [string]$Destination)
     {
-        #This is hideous and there has to be a better way...
-        [Boolean]$Found = $False
-        [int]$LibraryIndex = 0
-        While($Found -eq $False)
+        [int]$Index = $this.SearchZoneForCard($From, "Name", $CardName)
+        $this.ChangeCardZoneByIndex($Index, $From, $Destination)
+    }
+
+    ChangeCardZoneByIndex([int]$Index, [String]$From, [string]$Destination)
+    {
+        If($Index -gt -1)
         {
-            If($This.Library[$LibraryIndex].Name -eq $Name)
-            {
-                $this.Hand += $This.Library[$LibraryIndex]
-                $this.Library.RemoveAt($LibraryIndex)
-                $Found = $true
-            }
-            $LibraryIndex++
+            $this.$Destination += $this.$From[$Index]
+            $this.$From.RemoveAt($Index)
         }
+    }
+
+    DrawCard()
+    {
+        $this.ChangeCardZoneByIndex(0, "Library", "Hand")
+    }
+
+    Tutor([String]$CardName)
+    {
+        $this.ChangeCardZoneByName($CardName, "Library", "Hand")
     }
 
     DrawOpeningHand()
@@ -250,29 +284,19 @@ class Game
 
         If($Card.type_line -notlike "*Instant*" -and $Card.type_line -notlike "*sorcery*")
         {
-            #This is hideous and there has to be a better way...
-            [Boolean]$Found = $False
-            [int]$HandIndex = 0
-            While($Found -eq $False)
-            {
-                If($This.Hand[$HandIndex].Name -eq $Card.Name)
-                {
-                    $this.BattleField += $This.Hand[$HandIndex]
-                    $this.Hand.RemoveAt($HandIndex)
-                    $Found = $true
-                }
-                $HandIndex++
-            }
+            $this.ChangeCardZoneByName($Card.name, "Hand", "BattleField")
         }
     }
 
     EndTurn()
     {
-        $this.Turn++
+        #Just a place holder in case we need it later.
     }
 
     StartTurn()
     {
+        $this.Turn++
+
         If( !($this.turn -eq 1 -and $this.OnPlay) )
         {
             $this.DrawCard()
@@ -289,31 +313,62 @@ class Game
     TopCardsToEffectZone([int]$CardCount)
     {
         0..($CardCount - 1) | ForEach-Object -Process {
-            $this.EffectZone += $this.Library[$_]
-            $this.Library.RemoveAt($_)
+            $this.ChangeCardZoneByIndex(0, "Library", "EffectZone")
         }
     }
 
-    DrawFromEffectZone([Card]$Card)
+    EmptyEffectZone([String]$Destination)
     {
-        #This is hideous and there has to be a better way...
-        [Boolean]$Found = $False
-        [int]$EffectZoneIndex = 0
-        While($Found -eq $False)
-        {
-            If($This.EffectZone[$EffectZoneIndex].Name -eq $Card.Name)
-            {
-                $this.Hand += $This.EffectZone[$EffectZoneIndex]
-                $This.EffectZone.RemoveAt($EffectZoneIndex)
-                $Found = $true
-            }
-            $EffectZoneIndex++
-        }
-    }
-
-    EmptyEffectZoneToBottom()
-    {
-        $this.Library += ( $this.EffectZone | Sort-Object -Property { Get-Random } )
+        $this.$Destination += ( $this.EffectZone | Sort-Object -Property { Get-Random } )
         $this.EffectZone.Clear()
+    }
+
+    [Boolean]IsCastable([Card]$Card)
+    {
+        [String[]]$ManaProduction = @()
+        [int]$ManaProducers = 0
+        $this.BattleField | ForEach-Object -Process {
+            If($Mana = $_.GetManaProduction())
+            {
+                $ManaProduction += $Mana
+                $ManaProducers++
+            }
+        }
+
+        [System.Collections.ArrayList]$MissingColors = @()
+        If($Card.GetManaColorRequirements())
+        {
+            $MissingColors += Compare-Object -ReferenceObject $ManaProduction -DifferenceObject $Card.GetManaColorRequirements() | Where-Object -Property "SideIndicator" -EQ "=>"
+        }
+        
+        [Boolean]$Castable = $false
+        If( ($ManaProducers -ge $Card.cmc) -and ($MissingColors.count -eq 0))
+        {
+            $Castable = $true
+        }
+
+        Return $Castable
+    }
+
+    [Boolean]WouldLegendRule([Card]$Card)
+    {
+        [Boolean]$WouldLegendRule = $false
+        [Boolean]$InPlay = $false
+        If(SearchZoneForCard("Battlefield", "Name" ,$Card.name) -ne -1)
+        {
+            $InPlay = $true
+        }
+
+        If( $Card.Legendary -and $InPlay)
+        {
+            $WouldLegendRule = $true
+        }
+
+        Return $WouldLegendRule
+    }
+
+    [int]GetLandCount()
+    {
+        Return ($this.Battlefield | Where-Object -Property SuperType -like -Value "*Land" | Measure-Object).Count
     }
 }

@@ -22,6 +22,8 @@ function Update-MTGAStatsScryFallCardData
     {
         $CardJSONs = (Invoke-WebRequest -Uri "https://archive.scryfall.com/json/scryfall-default-cards.json" -UseBasicParsing).Content | ConvertFrom-Json
         $CardJSONs.Where({$_.arena_id}) | Export-Clixml -Path $Script:ScryfallDataPath -Force
+
+        Invoke-RestMethod -Uri "https://archive.scryfall.com/json/scryfall-default-cards.json" | Out-File -FilePath -Path $Script:ScryfallSymbology -Force
     }
     End
     {

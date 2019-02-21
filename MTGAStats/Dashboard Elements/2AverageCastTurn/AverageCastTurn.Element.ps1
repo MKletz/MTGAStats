@@ -7,10 +7,14 @@ param
 
 $ChartData = @()
 
-$Deck.MainDeck | Where-Object -Property CMC -gt -Value 0 | Select-Object -Property Name -Unique | ForEach-Object -Process {
-    $SimulationSplat = @{
+$SplitDeck = @()
+$Deck.MainDeck | ForEach-Object -Process {
+    $SplitDeck += $_.Split()
+}
+$SplitDeck | Where-Object -Property CMC -gt -Value 0 | Select-Object -Property Name -Unique | ForEach-Object -Process {
+    $SimulationSplat = @{ 
         Path = "D:\gitHub\MTGAStats\MTGAStats\Simulations\TurnPlayable.Simulation.ps1"
-        Iterations = 10
+        Iterations = 1
         SimulationParameters = @{
             Deck = $Deck
             CardName = $_.name

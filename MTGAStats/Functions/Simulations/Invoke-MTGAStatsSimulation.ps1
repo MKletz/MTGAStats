@@ -16,6 +16,7 @@ function Invoke-MTGAStatsSimulation
     {        
         for ($i = 0; $i -lt $Iterations; $i++)
         {
+            Write-Verbose -Message "Running simulation $($i)/$($Iterations)" 
             & $Path @SimulationParameters
         }
     }

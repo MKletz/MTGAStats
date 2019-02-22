@@ -2,10 +2,9 @@
 [String]$Script:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
 [String]$Script:ScryfallDataPath = "$($Script:DataRoot)\scryfall-default-cards.xml"
 [String]$Script:ScryfallSymbology = "$($Script:DataRoot)\Symbology.json"
-[String]$Script:DashboardScriptsPath = Join-Path -Path $PSScriptRoot -ChildPath "Dashboard Elements" -Resolve
+[String]$Script:PluginsPath = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
 
 Get-ChildItem -Path $FunctionRoot -Filter "*.ps1" -Recurse | ForEach-Object -Process {
-    Write-Verbose -Message "Importing function $($_.FullName)."
     . $_.FullName | Out-Null
 }
 
@@ -86,6 +85,7 @@ class Symbol
 
 class Card
 {
+    #region Parameters
     [String]$id
     [String]$oracle_id
     [Int32]$mtgo_id
@@ -139,7 +139,7 @@ class Card
     [Zone]$Zone
     [int]$ZoneId 
     [Symbol[]]$ManaProduction
-
+    #endregion
     [Card[]]Split()
     {
         [Card[]]$Return = @()
@@ -166,7 +166,14 @@ class Card
    # Constructors
    Card ([String]$ArenaId)
     {
-        $ScryfallCardData = $Global:CardData.Where({$_.arena_id -eq $ArenaId})
+        Try
+        {
+            $ScryfallCardData = $Global:CardData.Where({$_.arena_id -eq $ArenaId})
+        }
+        Catch
+        {
+            throw "Card data not found for arenaID $($_.arena_id)"
+        }
         #Direct from Scryfall
         $this.id = $ScryfallCardData.id
         $this.oracle_id = $ScryfallCardData.oracle_id
@@ -236,24 +243,6 @@ class Deck
     [String]$Format
     [Card[]]$MainDeck
     [Card[]]$Sideboard
-
-    [String[]]GetManaProduction()
-    {
-        [String[]]$ManaProduction = @()
-        $this.mainDeck | ForEach-Object -Process {
-            $ManaProduction += $_.GetManaProduction()
-        }
-        Return ($ManaProduction | Where-Object -Filter {$_})
-    }
-
-    [String[]]GetManaColorRequirements()
-    {
-        [String[]]$ManaColorRequirements = @()
-        $this.MainDeck | ForEach-Object -Process {
-            $ManaColorRequirements += $_.GetManaColorRequirements()
-        }
-        Return ($ManaColorRequirements | Where-Object -Filter {$_})
-    }
 
     # Constructor
     Deck ([Object]$MTGADeckJson)
@@ -360,23 +349,35 @@ class Zone
         $Permutations = $this.GetManaPermutations()
 
         [Boolean]$Castable = $false
-        $Permutations | ForEach-Object -Process {
-            [int]$PermutationCMC = (($_).cmc | Measure-Object -Sum).Sum
-            If($PermutationCMC -ge $Card.cmc)
+        
+        Foreach($Permutation in $Permutations)
+        {
+            [Boolean]$CMCCheck = (($Permutation).cmc | Measure-Object -Sum).Sum -ge $Card.cmc
+            [Boolean]$ColorCheck = $False
+            If($CMCCheck)
             {
-                $CompareSplat = @{
-                    ReferenceObject = ( $Card.mana_cost | Where-Object {$_.Colors} )
-                    DifferenceObject = $_
-                    Property = "Symbol"
-                }
-                
-                $MissingColors = Compare-Object @CompareSplat | Where-Object -Property SideIndicator -EQ -Value "<="
-
-                If(!$MissingColors)
+                If( $NeededColors = $Card.mana_cost | Where-Object -FilterScript { $_.Colors } )
                 {
-                    $Castable = $true
-                    Break
+                    $CompareSplat = @{
+                        ReferenceObject = $NeededColors
+                        DifferenceObject = $Permutation
+                        Property = "Symbol"
+                    }
+                    If (!(Compare-Object @CompareSplat | Where-Object -Property SideIndicator -EQ -Value "<="))
+                    {
+                        $ColorCheck = $true
+                    }
                 }
+                else
+                {
+                    $ColorCheck = $true    
+                }
+            }
+
+            If($CMCCheck -and $ColorCheck)
+            {
+                $Castable = $true
+                Break
             }
         }
 
@@ -401,7 +402,7 @@ class Game
     [Boolean]$LandPlayed = $false
     [Deck]$Deck
     [int]$StartingHandSize = 7
-    [int]$Turn = 1
+    [int]$Turn = 0
     [Boolean]$OnPlay = $True
 
     LoadDeck([Deck]$Deck)

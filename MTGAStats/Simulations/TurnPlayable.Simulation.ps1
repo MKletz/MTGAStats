@@ -27,4 +27,4 @@ Do
 }
 Until( $Game.BattleField.IsCastable($CardToCast) )
 
-Return ,$Game
+$Game

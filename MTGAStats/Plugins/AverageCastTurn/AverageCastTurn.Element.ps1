@@ -2,19 +2,16 @@ using module MTGAStats
 param
 (
     [Parameter(Mandatory=$true)]    
-    [Deck]$Deck
+    [Deck]$Deck,
+    [Parameter(Mandatory=$true)]    
+    $Settings
 )
-
 $ChartData = @()
 
-$SplitDeck = @()
-$Deck.MainDeck | ForEach-Object -Process {
-    $SplitDeck += $_.Split()
-}
-$SplitDeck | Where-Object -Property CMC -gt -Value 0 | Select-Object -Property Name -Unique | ForEach-Object -Process {
+$Deck.MainDeck | Where-Object -FilterScript {$_.CMC -gt 0 -and $_.layout -eq "normal"} | Select-Object -Property Name -Unique | ForEach-Object -Process {
     $SimulationSplat = @{ 
         Path = "D:\gitHub\MTGAStats\MTGAStats\Simulations\TurnPlayable.Simulation.ps1"
-        Iterations = 1
+        Iterations = [int]$Settings.Iterations
         SimulationParameters = @{
             Deck = $Deck
             CardName = $_.name

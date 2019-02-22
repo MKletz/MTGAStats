@@ -5,4 +5,4 @@ param
     [Deck]$Deck
 )
 
-Return ,$True
+$True

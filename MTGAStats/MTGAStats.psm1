@@ -1,4 +1,10 @@
-﻿[String]$FunctionRoot = Join-Path -Path $PSScriptRoot -ChildPath "Functions" -Resolve
+﻿[String]$PackagePath = (Get-Package -Name "MathNet.Numerics").Source
+
+(Get-ChildItem -Filter *.dll -Recurse (Split-Path $PackagePath)).FullName | ForEach-Object -Process {
+    Add-Type -Path $_
+}
+
+[String]$FunctionRoot = Join-Path -Path $PSScriptRoot -ChildPath "Functions" -Resolve
 [String]$Script:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
 [String]$Script:ScryfallDataPath = "$($Script:DataRoot)\scryfall-default-cards.xml"
 [String]$Script:ScryfallSymbology = "$($Script:DataRoot)\Symbology.json"
@@ -346,42 +352,49 @@ class Zone
 
     [Boolean]IsCastable([Card]$Card)
     {
-        $Permutations = $this.GetManaPermutations()
-
-        [Boolean]$Castable = $false
+        $ManaProducers = $this.Cards | Where-Object -Property ManaProduction
         
-        Foreach($Permutation in $Permutations)
-        {
-            [Boolean]$CMCCheck = (($Permutation).cmc | Measure-Object -Sum).Sum -ge $Card.cmc
-            [Boolean]$ColorCheck = $False
-            If($CMCCheck)
-            {
-                If( $NeededColors = $Card.mana_cost | Where-Object -FilterScript { $_.Colors } )
-                {
-                    $CompareSplat = @{
-                        ReferenceObject = $NeededColors
-                        DifferenceObject = $Permutation
-                        Property = "Symbol"
-                    }
-                    If (!(Compare-Object @CompareSplat | Where-Object -Property SideIndicator -EQ -Value "<="))
-                    {
-                        $ColorCheck = $true
-                    }
-                }
-                else
-                {
-                    $ColorCheck = $true    
-                }
-            }
+        [Boolean]$CMCCheck = ($ManaProducers | Measure-Object).Count -ge $Card.cmc
+        [Boolean]$ColorCheck = $false
 
-            If($CMCCheck -and $ColorCheck)
+        If( $CMCCheck )
+        {
+            $RelevantManaProducers = @()
+            $RelevantManaProducers += $ManaProducers | 
+                Where-Object -FilterScript { Compare-Object -ReferenceObject $_.ManaProduction -DifferenceObject $Card.mana_cost -Property colors -IncludeEqual -ExcludeDifferent }
+
+            $ColoredSymbols = @()
+            $ColoredSymbols += ($Card.mana_cost | Where-Object -Property colors)
+
+            If( $RelevantManaProducers.count -ge $ColoredSymbols.count )
             {
-                $Castable = $true
-                Break
+                $Buckets = @()
+                $Buckets += Get-MTGAStatsObjectBuckets -Collection $RelevantManaProducers -ResultSize $ColoredSymbols.count
+
+                Foreach($Bucket in $Buckets)
+                {
+                    $CharacterSets = @()
+                    $CharacterSets += $Bucket | ForEach-Object -Process {
+                        ,@(($_.ManaProduction).colors)
+                    }
+
+                    Get-Combinations -Object $CharacterSets | ForEach-Object -Process {
+                        $CompareSplat = @{
+                            ReferenceObject = $ColoredSymbols.colors
+                            DifferenceObject = $_.ToCharArray()
+                        }
+
+                        If (!(Compare-Object @CompareSplat | Where-Object -Property SideIndicator -EQ -Value "<="))
+                        {
+                            $ColorCheck = $true
+                            Break
+                        }
+                    }
+                }
             }
         }
 
-        Return $Castable
+        Return ($CMCCheck -and $ColorCheck)
     }
 
     # Constructor
@@ -439,8 +452,16 @@ class Game
 
     Tutor([String]$CardName)
     {
-        $this.Hand.AddCard( $this.Library.GetCardByName($CardName) )
-        $this.Library.Shuffle()
+        
+        If( $Card = $this.Library.GetCardByName($CardName) )
+        {
+            $this.Hand.AddCard( $Card )
+            $this.Library.Shuffle()
+        }
+        else
+        {
+            Throw "$($CardName) not found in Library."
+        }
     }
 
     StartTurn()

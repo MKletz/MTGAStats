@@ -16,3 +16,9 @@ Move-Item -Path $MTGAStatsPath -Destination $ModulesDir
 
 Remove-Item -Path $ZipPath -Force
 Remove-Item -Path $ExtractPath -Recurse -Force
+
+If(!(Get-PackageSource -Location "https://www.nuget.org/api/v2"))
+{
+    Register-PackageSource -ProviderName "NuGet" -Name "NuGet" -Location "https://www.nuget.org/api/v2" -Trusted
+}
+Install-Package -Name "MathNet.Numerics" -Source "NuGet"

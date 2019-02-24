@@ -16,21 +16,33 @@ Function Get-Combinations {
       Get-Combinations @($Array1, $Array2, $Array3)
     .Example
       Get-Combinations @("site", @("web", "app"), @("01", "02"))
-  #>
-      
-  Param(
-   [Object[]]$Object,
-   [String]$Seperator,
-   [UInt32]$CurIndex = 0,
-   [String]$Return = ""
+  #>    
+  Param
+  (
+    [Object[]]$Object,
+    [String]$Seperator,
+    [UInt32]$CurIndex = 0,
+    [String]$Return = [String]::Empty
   )
-
-  $MaxIndex = $Object.Count - 1
-  $Object[$CurIndex] | ForEach-Object {
-    [Array]$NewReturn = "$($Return)$($Seperator)$($_)".Trim($Seperator)
-    If ($CurIndex -lt $MaxIndex) {
-      $NewReturn = Get-Combinations $Object -CurIndex ($CurIndex + 1) -Return $NewReturn
-    }
-    $NewReturn
+  Begin
+  {
   }
-}
+  Process
+  {
+    [int]$MaxIndex = ($Object.Count - 1)
+
+    $Object[$CurIndex] | ForEach-Object -Process {
+      
+      [Array]$NewReturn = "$($Return)$($Seperator)$($_)".Trim($Seperator)
+      
+      If ($CurIndex -lt $MaxIndex) {
+        $NewReturn = Get-Combinations $Object -CurIndex ($CurIndex + 1) -Return $NewReturn
+      }
+
+      $NewReturn
+    }
+  }
+  End
+  {
+  }
+  }

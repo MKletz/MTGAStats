@@ -465,6 +465,21 @@ class Game
         Return ($this.Battlefield.Cards | Where-Object -Property SuperType -like -Value "*Land" | Measure-Object).Count
     }
 
+    TopCardsToEffectZone([int]$Count)
+    {
+        1..$Count | ForEach-Object -Process {
+            $this.EffectZone.AddCard($this.Library.Cards[0])
+        }
+    }
+
+    EmptyEffectZoneToBottom()
+    {
+        $this.EffectZone.Shuffle()
+        1..$this.EffectZone.Cards.Count | ForEach-Object -Process {
+            $this.Library.AddCard($this.EffectZone.Cards[0])
+        }
+    }
+
     # Constructor
     Game([Deck]$Deck)
     {

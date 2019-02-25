@@ -6,9 +6,7 @@
 
 [String]$FunctionRoot = Join-Path -Path $PSScriptRoot -ChildPath "Functions" -Resolve
 [String]$Script:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
-[String]$Script:ScryfallDataPath = "$($Script:DataRoot)\scryfall-default-cards.xml"
-[String]$Script:ScryfallSymbology = "$($Script:DataRoot)\Symbology.json"
-[String]$Script:PluginsPath = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
+[String]$Script:PluginsRoot = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
 
 Get-ChildItem -Path $FunctionRoot -Filter "*.ps1" -Recurse | ForEach-Object -Process {
     . $_.FullName | Out-Null
@@ -30,10 +28,15 @@ Else
 }
 
 [System.Collections.ArrayList]$Global:CardData = @()
-$Global:CardData += Import-Clixml -Path $Script:ScryfallDataPath
+$Global:CardData += Import-Clixml -Path "$Script:DataRoot\scryfall-default-cards.xml"
 
-[System.Collections.ArrayList]$Global:Symbology = @()
-$Global:Symbology += Get-Content -Path $Script:ScryfallSymbology | ConvertFrom-Json | Select-Object -ExpandProperty data
+[System.Collections.ArrayList]$Global:SymbologyData = @()
+$Global:SymbologyData += Get-Content -Path "$($Script:DataRoot)\Symbology.json" | ConvertFrom-Json | Select-Object -ExpandProperty data
+
+[System.Collections.ArrayList]$Global:Plugins = @()
+$Global:Plugins += Get-ChildItem -Path $Script:PluginsRoot -Filter "*.settings.JSON" -Recurse | ForEach-Object -Process {
+    #[Plugin]::new($_.FullName)
+}
 
 class Symbol
 {
@@ -69,7 +72,7 @@ class Symbol
     #Constructor
     Symbol([String]$Symbol)
     {
-        If( $ScryfallData = $Global:Symbology.Where({ $_.Symbol -eq $Symbol.Trim() }) )
+        If( $ScryfallData = $Global:SymbologyData.Where({ $_.Symbol -eq $Symbol.Trim() }) )
         {
             $this.symbol = $ScryfallData.symbol
             $this.loose_variant = $ScryfallData.loose_variant
@@ -506,5 +509,38 @@ class Game
     {
         $this.Deck = $Deck
         $this.LoadDeck($Deck)
+    }
+}
+
+class Plugin
+{
+    [String]$Name
+    [String]$Description
+    [Boolean]$Enabled
+    [Version]$Version
+    [String]$Location
+    [String]$Test
+    [String]$Element
+    [Object]$Settings
+
+    [Boolean]IsRelevantToDeck([Deck]$Deck)
+    {
+        Start-Job -FilePath $this.Test -ArgumentList $Deck | Wait-Job
+        Return (Get-Job | Receive-Job)
+    }
+
+    # Constructor
+    Plugin([String]$Path)
+    {
+        $JSON = (Get-content -Path $Path | ConvertFrom-Json)
+        
+        $this.Name = $JSON.Name
+        $this.Description = $JSON.Description
+        $this.Enabled = $JSON.Enabled
+        $this.Version = $JSON.Version
+        $this.Location = Split-Path -Path $Path
+        $this.Test = ( Get-ChildItem -Path $this.Location -Filter "*.Test.ps1" )[0].FullName
+        $this.Element = ( Get-ChildItem -Path $this.Location -Filter "*.Element.ps1" )[0].FullName
+        $this.Settings = $JSON.Settings
     }
 }

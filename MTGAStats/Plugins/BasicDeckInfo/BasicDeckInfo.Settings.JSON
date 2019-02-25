@@ -1,4 +1,8 @@
 {
-    "Enabled": 1,
-    "Desscription": "Provides a basic deck list and mana requirement/production ratio calculation."
+    "Name": "Basic Deck Information",
+	"Description": "Provides a basic deck list and mana requirement/production ratio calculation.",
+	"Enabled": 1,
+	"Version": "1.0.0",
+	"Settings":{
+	}
 }

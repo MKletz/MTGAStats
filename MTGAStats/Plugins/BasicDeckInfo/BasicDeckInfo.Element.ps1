@@ -7,25 +7,44 @@ param
     $Settings
 )
 
-$MainDeckData = $Deck.MainDeck | Group-Object -Property Name -NoElement
-$SideBoardData = $Deck.Sideboard | Group-Object -Property Name -NoElement
+$OpeningPercentage = @{
+    Name = 'Opener'
+    Expression = {
+        $Percentage = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count,7,0)) * 100
+        "$([Math]::Round($Percentage,2))%"
+    }
+}
 
-$ProductionData = ($Deck.MainDeck).manaproduction.symbol | Group-Object -NoElement
+$OnCurvePercentage = @{
+    Name = 'OnCurve'
+    Expression = {
+        $Play = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count, (7 + $_.group[0].cmc),0)) * 100
+        $Draw = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count, (8 + $_.group[0].cmc),0)) * 100
+        "$([Math]::Round($Play,2))% / $([Math]::Round($Draw,2))%"
+    }
+}
+
+$MainDeckData = $Deck.MainDeck | Group-Object -Property Name | Select-Object -Property Name,Count,$OpeningPercentage,$OnCurvePercentage
+$SideBoardData = $Deck.Sideboard | Group-Object -Property Name | Select-Object -Property Name,Count,$OpeningPercentage,$OnCurvePercentage
+[String[]]$DeckHeaders = @("Name", "Count", "Opener", "On Curve P/D")
+[String[]]$Properties = @("Name", "Count", "Opener", "OnCurve")
+
+$ProductionData = (($Deck.MainDeck).manaproduction) | Group-Object -NoElement
 [String]$ProductionLabel = $ProductionData.Name
 
-$RequirementsData = ($Deck.MainDeck).mana_cost | Where-Object -FilterScript {$_.Colors} | Group-Object -Property symbol
+$RequirementsData = (($Deck.MainDeck).mana_cost) | Where-Object -FilterScript {$_.Colors} | Group-Object -Property symbol -NoElement
 [String]$RequirementsLabel = $RequirementsData.Name
 
 New-UDRow {
 
     New-UDColumn -Content {
-        New-UDGrid -Title "MainDeck"  -Headers @("Name", "Count") -Properties @("Name", "Count") -FontColor "black" -PageSize $MainDeckData.Count -Endpoint {
+        New-UDGrid -Title "MainDeck - $($Deck.MainDeck.Count)"  -Headers $DeckHeaders -Properties $Properties -FontColor "black" -PageSize $MainDeckData.Count -Endpoint {
             $MainDeckData | Out-UDGridData
         }
     } 
 
     New-UDColumn -Content {
-        New-UDGrid -Title "Sideboard"  -Headers @("Name", "Count") -Properties @("Name", "Count") -FontColor "black" -PageSize $SideBoardData.Count -Endpoint {
+        New-UDGrid -Title "Sideboard - $($Deck.Sideboard.Count)"  -Headers $DeckHeaders -Properties $Properties -FontColor "black" -PageSize $SideBoardData.Count -Endpoint {
             $SideBoardData | Out-UDGridData
         }
     }

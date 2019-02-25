@@ -16,7 +16,8 @@ function Get-MTGAStatsPlugin
     Param
     (
         [Parameter(Position=0)]
-        [String]$Name = "*"
+        [String]$Name = "*",
+        [Switch]$Enabled
     )
 
     Begin
@@ -24,9 +25,7 @@ function Get-MTGAStatsPlugin
     }
     Process
     {
-        [String]$Path = "$($Script:PluginsPath)"
-
-        Get-ChildItem -Path $Path -Directory -Filter $Name | Select-Object -Property Name,FullName
+        $Global:Plugins | Where-Object -FilterScript { $_.Name -like $Name -and ( $_.Enabled -or !($Enabled))}
     }
     End
     {

@@ -1,4 +1,8 @@
 {
-    "Enabled": 1,
-    "Desscription": "Provides percentage change to hit with Militia Bugler"
+    "Name": "Militia Bugler Hits",
+	"Description": "Provides percentage change to hit with Militia Bugler",
+	"Enabled": 1,
+	"Version": "1.0.0",
+	"Settings":{
+	}
 }

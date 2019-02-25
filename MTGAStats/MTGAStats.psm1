@@ -1,43 +1,9 @@
-﻿[String]$PackagePath = (Get-Package -Name "MathNet.Numerics").Source
-
-(Get-ChildItem -Filter *.dll -Recurse (Split-Path $PackagePath)).FullName | ForEach-Object -Process {
-    Add-Type -Path $_
+﻿[String]$PackagePath = Split-Path -path (Get-Package -Name "MathNet.Numerics").Source
+Get-ChildItem -Path $PackagePath -Filter "*.dll" -Recurse | ForEach-Object -Process {
+    Add-Type -Path $_.FullName
 }
 
-[String]$FunctionRoot = Join-Path -Path $PSScriptRoot -ChildPath "Functions" -Resolve
-[String]$Script:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
-[String]$Script:PluginsRoot = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
-
-Get-ChildItem -Path $FunctionRoot -Filter "*.ps1" -Recurse | ForEach-Object -Process {
-    . $_.FullName | Out-Null
-}
-
-If(!(Test-Path -Path $Script:ScryfallDataPath))
-{
-    Write-Verbose -Message "Card data not found. Downloading from Scryfall."
-    Update-MTGAStatsScryFallCardData
-}
-Else
-{
-    $TimeSinceDataUpdate = New-TimeSpan -Start (Get-Item -Path $Script:ScryfallDataPath).LastWriteTime -End ([datetime]::Now)
-    If($TimeSinceDataUpdate.TotalHours -gt 24)
-    {
-        Write-Verbose -Message "Card data is old. Downloading from Scryfall."
-        Update-MTGAStatsScryFallCardData
-    }
-}
-
-[System.Collections.ArrayList]$Global:CardData = @()
-$Global:CardData += Import-Clixml -Path "$Script:DataRoot\scryfall-default-cards.xml"
-
-[System.Collections.ArrayList]$Global:SymbologyData = @()
-$Global:SymbologyData += Get-Content -Path "$($Script:DataRoot)\Symbology.json" | ConvertFrom-Json | Select-Object -ExpandProperty data
-
-[System.Collections.ArrayList]$Global:Plugins = @()
-$Global:Plugins += Get-ChildItem -Path $Script:PluginsRoot -Filter "*.settings.JSON" -Recurse | ForEach-Object -Process {
-    #[Plugin]::new($_.FullName)
-}
-
+#region Classes
 class Symbol
 {
     [String]$symbol
@@ -529,6 +495,11 @@ class Plugin
         Return (Get-Job | Receive-Job)
     }
 
+    [Object]GetUDElement([Deck]$Deck)
+    {
+        Return & $this.Element -Deck $Deck -Settings $This.Settings
+    }
+
     # Constructor
     Plugin([String]$Path)
     {
@@ -543,4 +514,29 @@ class Plugin
         $this.Element = ( Get-ChildItem -Path $this.Location -Filter "*.Element.ps1" )[0].FullName
         $this.Settings = $JSON.Settings
     }
+}
+#endregion
+
+[String]$FunctionRoot = Join-Path -Path $PSScriptRoot -ChildPath "Functions" -Resolve
+[String]$Script:PluginsRoot = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
+
+[String]$Script:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
+[String]$Script:CardDataPath = "$($Script:DataRoot)\scryfall-default-cards.xml"
+[String]$Script:SymbologyDataPath = "$($Script:DataRoot)\Symbology.json"
+
+Get-ChildItem -Path $FunctionRoot -Filter "*.ps1" -Recurse | ForEach-Object -Process {
+    . $_.FullName | Out-Null
+}
+
+Update-MTGAStatsScryFallCardData -AgeCheck
+
+[System.Collections.ArrayList]$Global:CardData = @()
+$Global:CardData += Import-Clixml -Path $Script:CardDataPath
+
+[System.Collections.ArrayList]$Global:SymbologyData = @()
+$Global:SymbologyData += Get-Content -Path $Script:SymbologyDataPath  | ConvertFrom-Json | Select-Object -ExpandProperty data
+
+[System.Collections.ArrayList]$Global:Plugins = @()
+Get-ChildItem -Path $Script:PluginsRoot -Filter "*.settings.JSON" -Recurse | ForEach-Object -Process {
+    $Global:Plugins += [Plugin]::new($_.FullName)
 }

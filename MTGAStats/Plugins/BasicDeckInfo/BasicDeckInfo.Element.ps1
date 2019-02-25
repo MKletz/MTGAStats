@@ -2,30 +2,33 @@ using module MTGAStats
 param
 (
     [Parameter(Mandatory=$true)]    
-    [Deck]$Deck,
+    $Deck,
     [Parameter(Mandatory=$true)]    
     $Settings
 )
 
-$OpeningPercentage = @{
-    Name = 'Opener'
-    Expression = {
-        $Percentage = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count,7,0)) * 100
-        "$([Math]::Round($Percentage,2))%"
+$Properties = @(
+    "Name",
+    "Count",
+    @{
+        Name = 'Opener'
+        Expression = {
+            $Percentage = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count,7,0)) * 100
+            "$([Math]::Round($Percentage,2))%"
+        }
+    },
+    @{
+        Name = 'OnCurve'
+        Expression = {
+            $Play = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count, (7 + $_.group[0].cmc),0)) * 100
+            $Draw = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count, (8 + $_.group[0].cmc),0)) * 100
+            "$([Math]::Round($Play,2))%/$([Math]::Round($Draw,2))%"
+        }
     }
-}
+)
 
-$OnCurvePercentage = @{
-    Name = 'OnCurve'
-    Expression = {
-        $Play = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count, (7 + $_.group[0].cmc),0)) * 100
-        $Draw = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count, (8 + $_.group[0].cmc),0)) * 100
-        "$([Math]::Round($Play,2))% / $([Math]::Round($Draw,2))%"
-    }
-}
-
-$MainDeckData = $Deck.MainDeck | Group-Object -Property Name | Select-Object -Property Name,Count,$OpeningPercentage,$OnCurvePercentage
-$SideBoardData = $Deck.Sideboard | Group-Object -Property Name | Select-Object -Property Name,Count,$OpeningPercentage,$OnCurvePercentage
+$MainDeckData = $Deck.MainDeck | Group-Object -Property Name | Select-Object -Property $Properties
+$SideBoardData = $Deck.Sideboard | Group-Object -Property Name | Select-Object -Property $Properties
 [String[]]$DeckHeaders = @("Name", "Count", "Opener", "On Curve P/D")
 [String[]]$Properties = @("Name", "Count", "Opener", "OnCurve")
 

@@ -1,7 +1,27 @@
 ﻿[String]$PackagePath = Split-Path -path (Get-Package -Name "MathNet.Numerics").Source
 Get-ChildItem -Path $PackagePath -Filter "*.dll" -Recurse | ForEach-Object -Process {
+    Write-Verbose -Message "Importing $($_.FullName)"
     Add-Type -Path $_.FullName
 }
+
+[String]$FunctionRoot = Join-Path -Path $PSScriptRoot -ChildPath "Functions" -Resolve
+[String]$Script:PluginsRoot = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
+[String]$Script:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
+[String]$Script:CardDataPath = "$($Script:DataRoot)\scryfall-default-cards.xml"
+[String]$Script:SymbologyDataPath = "$($Script:DataRoot)\Symbology.json"
+
+Get-ChildItem -Path $FunctionRoot -Filter "*.ps1" -Recurse | ForEach-Object -Process {
+    Write-Verbose -Message "Importing $($_.FullName)"
+    . $_.FullName | Out-Null
+}
+
+#Update-MTGAStatsScryFallCardData -AgeCheck
+
+[System.Collections.ArrayList]$Global:CardData = @()
+$Global:CardData += Import-Clixml -Path $Script:CardDataPath
+
+[System.Collections.ArrayList]$Global:SymbologyData = @()
+$Global:SymbologyData += Get-Content -Path $Script:SymbologyDataPath  | ConvertFrom-Json | Select-Object -ExpandProperty data
 
 #region Classes
 class Symbol
@@ -16,11 +36,6 @@ class Symbol
     [Boolean]$funny
     [String[]]$colors
     [String[]]$gatherer_alternates
-
-    [String]ToString()
-    {
-        Return $this.symbol
-    }
 
     [Boolean]CanPayFor([Symbol]$Symbol)
     {
@@ -207,6 +222,7 @@ class Card
 
         $this.ManaProduction = Get-MTGAStatsManaProductionFromOracleText -OracleText $ScryfallCardData.oracle_text
         $this.mana_cost = Get-MTGAStatsManaSymbolSplit -ManaString $ScryfallCardData.mana_cost
+        
         $this.colors = $ScryfallCardData.colors
         $this.color_identity = $ScryfallCardData.color_identity
     }
@@ -324,9 +340,9 @@ class Zone
         $ManaProducers = $this.Cards | Where-Object -Property ManaProduction
         
         [Boolean]$CMCCheck = ($ManaProducers | Measure-Object).Count -ge $Card.cmc
-        [Boolean]$ColorCheck = $false
+        [Boolean]$ColorCheck = ($Card.colors -eq [String]::Empty)
 
-        If( $CMCCheck )
+        If( $CMCCheck -and !($ColorCheck))
         {
             $RelevantManaProducers = @()
             $RelevantManaProducers += $ManaProducers | 
@@ -335,7 +351,7 @@ class Zone
             $ColoredSymbols = @()
             $ColoredSymbols += ($Card.mana_cost | Where-Object -Property colors)
 
-            If( $RelevantManaProducers.count -ge $ColoredSymbols.count )
+            If($RelevantManaProducers.count -ge $ColoredSymbols.count )
             {
                 $Buckets = @()
                 $Buckets += Get-MTGAStatsObjectBuckets -Collection $RelevantManaProducers -ResultSize $ColoredSymbols.count
@@ -516,25 +532,6 @@ class Plugin
     }
 }
 #endregion
-
-[String]$FunctionRoot = Join-Path -Path $PSScriptRoot -ChildPath "Functions" -Resolve
-[String]$Script:PluginsRoot = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
-
-[String]$Script:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
-[String]$Script:CardDataPath = "$($Script:DataRoot)\scryfall-default-cards.xml"
-[String]$Script:SymbologyDataPath = "$($Script:DataRoot)\Symbology.json"
-
-Get-ChildItem -Path $FunctionRoot -Filter "*.ps1" -Recurse | ForEach-Object -Process {
-    . $_.FullName | Out-Null
-}
-
-Update-MTGAStatsScryFallCardData -AgeCheck
-
-[System.Collections.ArrayList]$Global:CardData = @()
-$Global:CardData += Import-Clixml -Path $Script:CardDataPath
-
-[System.Collections.ArrayList]$Global:SymbologyData = @()
-$Global:SymbologyData += Get-Content -Path $Script:SymbologyDataPath  | ConvertFrom-Json | Select-Object -ExpandProperty data
 
 [System.Collections.ArrayList]$Global:Plugins = @()
 Get-ChildItem -Path $Script:PluginsRoot -Filter "*.settings.JSON" -Recurse | ForEach-Object -Process {

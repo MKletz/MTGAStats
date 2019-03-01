@@ -22,7 +22,7 @@ $Properties = @(
         Expression = {
             $Play = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count, (7 + $_.group[0].cmc),0)) * 100
             $Draw = (1 - [MathNet.Numerics.Distributions.Hypergeometric]::CDF($Deck.MainDeck.Count,$_.Count, (8 + $_.group[0].cmc),0)) * 100
-            "$([Math]::Round($Play,2))%/$([Math]::Round($Draw,2))%"
+            "$([Math]::Round($Play,2))% / $([Math]::Round($Draw,2))%"
         }
     }
 )
@@ -32,10 +32,10 @@ $SideBoardData = $Deck.Sideboard | Group-Object -Property Name | Select-Object -
 [String[]]$DeckHeaders = @("Name", "Count", "Opener", "On Curve P/D")
 [String[]]$Properties = @("Name", "Count", "Opener", "OnCurve")
 
-$ProductionData = (($Deck.MainDeck).manaproduction) | Group-Object -NoElement
+$ProductionData = (($Deck.MainDeck).manaproduction) | Group-Object -Property symbol
 [String]$ProductionLabel = $ProductionData.Name
 
-$RequirementsData = (($Deck.MainDeck).mana_cost) | Where-Object -FilterScript {$_.Colors} | Group-Object -Property symbol -NoElement
+$RequirementsData = (($Deck.MainDeck).mana_cost) | Where-Object -Property Colors | Group-Object -Property symbol -NoElement
 [String]$RequirementsLabel = $RequirementsData.Name
 
 New-UDRow {

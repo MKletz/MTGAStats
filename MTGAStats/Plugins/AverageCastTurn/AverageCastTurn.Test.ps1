@@ -2,7 +2,7 @@ using module MTGAStats
 param
 (
     [Parameter(Mandatory=$true)]    
-    [Deck]$Deck
+    $Deck
 )
 
 $True

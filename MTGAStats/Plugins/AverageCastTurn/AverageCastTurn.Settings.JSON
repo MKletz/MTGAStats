@@ -1,7 +1,7 @@
 {
     "Name": "Average Castable Turn",
 	"Description": "Gives average turn cards in a deck are castable from land drops",
-	"Enabled": 0,
+	"Enabled": 1,
 	"Version": "1.0.0",
 	"Settings":{
 		"Iterations":1

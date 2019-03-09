@@ -5,23 +5,25 @@ Get-ChildItem -Path $PackagePath -Filter "*.dll" -Recurse | ForEach-Object -Proc
 }
 
 [String]$FunctionRoot = Join-Path -Path $PSScriptRoot -ChildPath "Functions" -Resolve
-[String]$Script:PluginsRoot = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
-[String]$Script:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
-[String]$Script:CardDataPath = "$($Script:DataRoot)\scryfall-default-cards.xml"
-[String]$Script:SymbologyDataPath = "$($Script:DataRoot)\Symbology.json"
 
 Get-ChildItem -Path $FunctionRoot -Filter "*.ps1" -Recurse | ForEach-Object -Process {
     Write-Verbose -Message "Importing $($_.FullName)"
     . $_.FullName | Out-Null
 }
 
-#Update-MTGAStatsScryFallCardData -AgeCheck
+[String]$Global:PluginsRoot = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
+[String]$Global:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
+
+[String]$Global:CardDataPath = "$($Global:DataRoot)\scryfall-default-cards.xml"
+[String]$Global:SymbologyDataPath = "$($Global:DataRoot)\Symbology.xml"
+
+Update-MTGAStatsScryFallCardData -AgeCheck
 
 [System.Collections.ArrayList]$Global:CardData = @()
-$Global:CardData += Import-Clixml -Path $Script:CardDataPath
+$Global:CardData += Import-Clixml -Path $Global:CardDataPath
 
 [System.Collections.ArrayList]$Global:SymbologyData = @()
-$Global:SymbologyData += Get-Content -Path $Script:SymbologyDataPath  | ConvertFrom-Json | Select-Object -ExpandProperty data
+$Global:SymbologyData += Import-Clixml -Path $Global:SymbologyDataPath
 
 #region Classes
 class Symbol
@@ -534,6 +536,6 @@ class Plugin
 #endregion
 
 [System.Collections.ArrayList]$Global:Plugins = @()
-Get-ChildItem -Path $Script:PluginsRoot -Filter "*.settings.JSON" -Recurse | ForEach-Object -Process {
+Get-ChildItem -Path $Global:PluginsRoot -Filter "*.settings.JSON" -Recurse | ForEach-Object -Process {
     $Global:Plugins += [Plugin]::new($_.FullName)
 }

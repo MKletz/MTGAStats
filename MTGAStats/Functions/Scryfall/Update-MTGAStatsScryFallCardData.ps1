@@ -28,15 +28,17 @@ function Update-MTGAStatsScryFallCardData
    {
    }
    Process
-   {
+   {  
       [Boolean]$Download = $false
-      If($Force -or !(Test-Path -Path ($Script:CardDataPath,$Script:SymbologyDataPath) ) )
+      [Boolean]$FilesMissing = (Test-Path -Path ($Global:CardDataPath,$Global:SymbologyDataPath) | Measure-Object -Average).Average -lt 1
+
+      If($Force -or $FilesMissing)
       {
          $Download = $true
       }
-      Else
+      ElseIf($AgeCheck)
       {
-         $TimeSinceDataUpdate = New-TimeSpan -Start (Get-Item -Path $Script:CardDataPath).LastWriteTime -End ([datetime]::Now)
+         $TimeSinceDataUpdate = New-TimeSpan -Start (Get-Item -Path $Global:CardDataPath).LastWriteTime -End ([datetime]::Now)
 
          If($TimeSinceDataUpdate.TotalHours -gt $Age)
          {
@@ -47,9 +49,10 @@ function Update-MTGAStatsScryFallCardData
       If($Download)
       {
          $CardJSONs = (Invoke-WebRequest -Uri "https://archive.scryfall.com/json/scryfall-default-cards.json" -UseBasicParsing).Content | ConvertFrom-Json
-         $CardJSONs.Where({$_.arena_id}) | Export-Clixml -Path $Script:CardDataPath -Force
+         $CardJSONs.Where({$_.arena_id}) | Export-Clixml -Path $Global:CardDataPath -Force
 
-         Invoke-RestMethod -Uri "https://archive.scryfall.com/json/scryfall-default-cards.json" | Out-File -FilePath -Path $Script:SymbologyDataPath -Force
+         $Symbology = Invoke-RestMethod -Uri "https://api.scryfall.com/symbology"
+         $Symbology.Data | Export-Clixml -Path $Global:SymbologyDataPath -Force
       }
    }
    End

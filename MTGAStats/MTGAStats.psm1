@@ -13,7 +13,6 @@ Get-ChildItem -Path $FunctionRoot -Filter "*.ps1" -Recurse | ForEach-Object -Pro
 
 [String]$Global:PluginsRoot = Join-Path -Path $PSScriptRoot -ChildPath "Plugins" -Resolve
 [String]$Global:DataRoot = Join-Path -Path $PSScriptRoot -ChildPath "Data" -Resolve
-
 [String]$Global:CardDataPath = "$($Global:DataRoot)\scryfall-default-cards.xml"
 [String]$Global:SymbologyDataPath = "$($Global:DataRoot)\Symbology.xml"
 

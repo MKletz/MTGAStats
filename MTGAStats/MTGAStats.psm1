@@ -278,15 +278,15 @@ class Zone
 
     AddCard([Card]$Card)
     {
-        [Card]$Copy = [Card]::new($Card.arena_id)
-        $Copy.ZoneId = $this.GetNewId()
-        $Copy.Zone = $this
-        $this.Cards += $Copy
+        $this.Cards += $Card
 
         If( $Card.Zone )
         {
             $Card.Zone.RemoveCard($Card)
         }
+        
+        $Card.ZoneId = $this.GetNewId()
+        $Card.Zone = $this
     }
 
     Shuffle()

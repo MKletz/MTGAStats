@@ -17,13 +17,9 @@ Get-ChildItem -Path $FunctionRoot -Filter "*.ps1" -Recurse | ForEach-Object -Pro
 [String]$Global:CardDataPath = "$($Global:DataRoot)\scryfall-default-cards.xml"
 [String]$Global:SymbologyDataPath = "$($Global:DataRoot)\Symbology.xml"
 
-Update-MTGAStatsScryFallCardData -AgeCheck
-
 [System.Collections.ArrayList]$Global:CardData = @()
-$Global:CardData += Import-Clixml -Path $Global:CardDataPath
-
 [System.Collections.ArrayList]$Global:SymbologyData = @()
-$Global:SymbologyData += Import-Clixml -Path $Global:SymbologyDataPath
+Update-MTGAStatsScryFallCardData -AgeCheck
 
 #region Classes
 class Symbol

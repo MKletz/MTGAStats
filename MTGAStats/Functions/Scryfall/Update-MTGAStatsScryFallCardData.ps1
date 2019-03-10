@@ -54,6 +54,9 @@ function Update-MTGAStatsScryFallCardData
          $Symbology = Invoke-RestMethod -Uri "https://api.scryfall.com/symbology"
          $Symbology.Data | Export-Clixml -Path $Global:SymbologyDataPath -Force
       }
+
+      $Global:CardData += Import-Clixml -Path $Global:CardDataPath
+      $Global:SymbologyData += Import-Clixml -Path $Global:SymbologyDataPath
    }
    End
    {

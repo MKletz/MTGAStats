@@ -1,9 +1,9 @@
 using module MTGAStats
 param
 (
-    [Deck]$Deck,
-    [String]$CardName,
-    [Boolean]$OnPlay = $True
+    $Deck,
+    [Boolean]$OnPlay = $True,
+    [String]$CardName
 )
 
 $Game = [Game]::New($Deck)

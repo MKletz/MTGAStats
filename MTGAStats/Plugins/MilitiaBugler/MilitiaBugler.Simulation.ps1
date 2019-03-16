@@ -1,7 +1,7 @@
 using module MTGAStats
 param
 (
-    [Deck]$Deck,
+    $Deck,
     [Boolean]$OnPlay = $True,
     [int]$MaxTurn = 15
 )
@@ -42,4 +42,4 @@ Do
 }
 Until( $Game.Turn -eq $MaxTurn )
 
-$Results
+,$Results

@@ -504,15 +504,21 @@ class Plugin
 
     [Boolean]IsRelevantToDeck([Deck]$Deck)
     {
-        Start-Job -FilePath $this.Test -ArgumentList $Deck | Wait-Job
-        Return (Get-Job | Receive-Job)
+        [int]$JobId = (Start-RSJob -FilePath $this.Test -ArgumentList $Deck).Id
+        [Boolean]$Relevant = Get-RSJob -Id $JobId | Wait-RSJob | Receive-RSJob
+        Remove-RSJob -Id $JobId
+        Return $Relevant
     }
-
+    
     [Object]GetUDElement([Deck]$Deck)
     {
-        Return & $this.Element -Deck $Deck -Settings $This.Settings
+        [int]$JobId = (Start-RSJob -FilePath $this.Element -ArgumentList $Deck,$this.Settings).Id
+        $Return = (Get-RSJob -Id $JobId | Wait-RSJob | Receive-RSJob)
+        Remove-RSJob -Id $JobId
+        Return $Return
     }
-
+    
+    
     # Constructor
     Plugin([String]$Path)
     {

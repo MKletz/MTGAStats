@@ -1,5 +1,6 @@
 ﻿Start-Job -ScriptBlock { Install-Module -Name "PowerShellGet" -Force } | Wait-Job
 
+Set-PSRepository -Name "psgallery" -InstallationPolicy Trusted
 Import-Module -Name "PowerShellGet"  -MinimumVersion 2.0.0
 Install-Module -Name "UniversalDashboard.Community" -Force -AcceptLicense
 
@@ -17,8 +18,9 @@ Move-Item -Path $MTGAStatsPath -Destination $ModulesDir
 Remove-Item -Path $ZipPath -Force
 Remove-Item -Path $ExtractPath -Recurse -Force
 
-If(!(Get-PackageSource -Location "https://www.nuget.org/api/v2"))
-{
-    Register-PackageSource -ProviderName "NuGet" -Name "NuGet" -Location "https://www.nuget.org/api/v2" -Trusted
-}
+Register-PackageSource -ProviderName "NuGet" -Name "NuGet" -Location "https://www.nuget.org/api/v2" -Trusted
 Install-Package -Name "MathNet.Numerics" -Source "NuGet"
+
+[String]$PrivateFunctiondir = "$($ModulesDir)\MTGAStats\Functions\Private"
+New-item -Path $PrivateFunctiondir -ItemType Directory | Out-Null
+Invoke-WebRequest -Uri https://github.com/RamblingCookieMonster/Invoke-Parallel/blob/master/Invoke-Parallel/Invoke-Parallel.ps1 -OutFile "$($ModulesDir)\MTGAStats\Functions\Private\Invoke-Parallel.ps1"
